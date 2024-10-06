@@ -1,20 +1,34 @@
 #!/usr/bin/env bash
-# This script processes Apache log files (small, large, or incorrectly formatted) to group visitors by IP and HTTP status code, and then sorts by the number of occurrences.
+# This script parses an Apache log file, groups visitors by IP and HTTP status code, and sorts by occurrences.
+# It handles small, large, and malformed log files.
 
-# Processing log file:
-# - Extract valid IPs and HTTP status codes
-# - Filter valid entries only (valid IPv4 addresses and 3-digit HTTP codes)
-# - Count occurrences and sort by the highest count
-# - Print the formatted output
+LOG_FILE="access.log"
+
+# Check if the log file exists and is not empty
+if [[ ! -s "$LOG_FILE" ]]; then
+  echo "Error: Log file does not exist or is empty."
+  exit 1
+fi
+
+# Check if the log file contains valid log entries
+if ! grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ .* [0-9]{3} ' "$LOG_FILE"; then
+  echo "Error: Log file format is invalid or does not contain valid log entries."
+  exit 1
+fi
+
+# Process valid log entries: extract IPs and HTTP codes, count occurrences, and sort
 awk '
   {
-    # Ensure we have a valid IPv4 address and a valid 3-digit HTTP status code
+    # Filter valid IP addresses and 3-digit HTTP status codes
     if ($1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && $9 ~ /^[0-9]{3}$/) {
       print $1, $9;
-    } else {
-      # Log a warning for invalid entries (optional, not required)
-      # print "Warning: Invalid log entry ->", $0 > "/dev/stderr";
     }
   }
-' access.log | sort | uniq -c | sort -rn | awk '{printf("%8d %s %s\n", $1, $2, $3)}'
+' "$LOG_FILE" | sort | uniq -c | sort -rn | awk '{printf("%8d %s %s\n", $1, $2, $3)}'
+
+# Handle case where no valid entries are found
+if [[ $? -ne 0 ]]; then
+  echo "No valid log entries found."
+  exit 1
+fi
 
