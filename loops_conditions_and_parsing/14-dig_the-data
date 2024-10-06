@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
-# This script parses the Apache log file to group visitors by IP and HTTP status code, then sorts by the number of occurrences
+# This script processes Apache log files (small, large, or incorrectly formatted) to group visitors by IP and HTTP status code, and then sorts by the number of occurrences.
 
-# Extract IP and HTTP code, sort them, count occurrences, and format output
-awk '{print $1, $9}' access.log | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort | uniq -c | sort -rn | awk '{printf("%8d %s %s\n", $1, $2, $3)}'
+# Processing log file:
+# - Extract valid IPs and HTTP status codes
+# - Filter valid entries only (valid IPv4 addresses and 3-digit HTTP codes)
+# - Count occurrences and sort by the highest count
+# - Print the formatted output
+awk '
+  {
+    # Ensure we have a valid IPv4 address and a valid 3-digit HTTP status code
+    if ($1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && $9 ~ /^[0-9]{3}$/) {
+      print $1, $9;
+    } else {
+      # Log a warning for invalid entries (optional, not required)
+      # print "Warning: Invalid log entry ->", $0 > "/dev/stderr";
+    }
+  }
+' access.log | sort | uniq -c | sort -rn | awk '{printf("%8d %s %s\n", $1, $2, $3)}'
 
