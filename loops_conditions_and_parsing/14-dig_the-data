@@ -1,34 +1,5 @@
 #!/usr/bin/env bash
-# This script parses an Apache log file, groups visitors by IP and HTTP status code, and sorts by occurrences.
-# It handles small, large, and malformed log files.
+# This script groups visitors by IP and HTTP status code and counts occurrences
 
-LOG_FILE="access.log"
-
-# Check if the log file exists and is not empty
-if [[ ! -s "$LOG_FILE" ]]; then
-  echo "Error: Log file does not exist or is empty."
-  exit 1
-fi
-
-# Check if the log file contains valid log entries
-if ! grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ .* [0-9]{3} ' "$LOG_FILE"; then
-  echo "Error: Log file format is invalid or does not contain valid log entries."
-  exit 1
-fi
-
-# Process valid log entries: extract IPs and HTTP codes, count occurrences, and sort
-awk '
-  {
-    # Filter valid IP addresses and 3-digit HTTP status codes
-    if ($1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && $9 ~ /^[0-9]{3}$/) {
-      print $1, $9;
-    }
-  }
-' "$LOG_FILE" | sort | uniq -c | sort -rn | awk '{printf("%8d %s %s\n", $1, $2, $3)}'
-
-# Handle case where no valid entries are found
-if [[ $? -ne 0 ]]; then
-  echo "No valid log entries found."
-  exit 1
-fi
+awk '{print $1, $9}' apache-access.log | awk '{count[$1, $2]++} END {for (i in count) {split(i, arr, SUBSEP); print count[i], arr[1], arr[2]}}' | sort -nr
 
